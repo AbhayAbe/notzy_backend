@@ -36,10 +36,14 @@ func handleConnectionAndRoutes() {
 	//unauthenticated routes
 	router.GET("/test", controllers.Test)
 
+	router.POST("/register", controllers.Register)
+	router.POST("/login", controllers.Login)
+
 	//authenticatedRoutes
 	aR.Use(middlewares.Auth())
 	{
-		aR.POST("/register", controllers.Register)
+		aR.GET("/logout", controllers.Logout)
+		aR.POST("/addNote", controllers.AddNote)
 	}
 
 	if err := router.Run(_PORT_); err != nil {

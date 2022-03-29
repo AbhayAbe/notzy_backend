@@ -10,10 +10,10 @@ import (
 	"github.com/AbhayAbe/notzy_backend/database/mongo/constants"
 	"github.com/AbhayAbe/notzy_backend/models"
 	"github.com/AbhayAbe/notzy_backend/utils"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
-	"go.mongodb.org/mongo-driver/x/bsonx"
 )
 
 var _URI_ string
@@ -60,7 +60,7 @@ func initIndices(model interface{}) <-chan utils.Result {
 			if len(tag) > 0 && len(key) > 0 {
 				_, err := DB.Collection(schemaName).Indexes().CreateOne(context.Background(),
 					mongo.IndexModel{
-						Keys:    bsonx.Doc{{key, bsonx.Int32(1)}},
+						Keys:    bson.M{key: 1},
 						Options: options.Index().SetUnique(true),
 					})
 				if err != nil {
