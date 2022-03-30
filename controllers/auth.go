@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/AbhayAbe/notzy_backend/constants"
-	"github.com/AbhayAbe/notzy_backend/database/mongo/api/notzyMongo/crud"
+	"github.com/AbhayAbe/notzy_backend/database"
 	"github.com/AbhayAbe/notzy_backend/models"
 	"github.com/AbhayAbe/notzy_backend/statics"
 	"github.com/AbhayAbe/notzy_backend/utils"
@@ -36,7 +36,7 @@ func Register(ctx *gin.Context) {
 		return
 	}
 	u.Password = hash
-	res := <-crud.InsertDoc("users", u)
+	res := <-database.Api.InsertDoc("users", u)
 	if res.Error != nil {
 		ctx.JSON(500, utils.GenerateResponse(nil, constants.RegistrationFailed))
 		println("##Error:", err)
@@ -65,7 +65,7 @@ func Login(ctx *gin.Context) {
 	user := &models.User{}
 	email := data["email"]
 	filter := bson.D{{"email", email}}
-	er := <-crud.FindDoc("users", filter, user, nil)
+	er := <-database.Api.FindDoc("users", filter, user, nil)
 	if er != nil {
 		ctx.JSON(500, utils.GenerateResponse(nil, constants.LoginFailed))
 		fmt.Println("Error:", err)
@@ -96,7 +96,7 @@ func Login(ctx *gin.Context) {
 	update := bson.D{
 		{"$set", bson.D{{"tokens", user.Tokens}}},
 	}
-	res := <-crud.UpdateDoc("users", filter, update, nil)
+	res := <-database.Api.UpdateDoc("users", filter, update, nil)
 	if res.Error != nil {
 		ctx.JSON(500, utils.GenerateResponse(nil, constants.LoginFailed))
 		println("##Error:", res.Error.Error())
@@ -118,7 +118,7 @@ func Logout(ctx *gin.Context) {
 	fmt.Println("email:", email)
 	user := &models.User{}
 	filter := bson.D{{"email", email}}
-	err := <-crud.FindDoc("users", filter, user, nil)
+	err := <-database.Api.FindDoc("users", filter, user, nil)
 	if err != nil {
 		ctx.JSON(500, utils.GenerateResponse(nil, constants.LogoutFailed))
 		fmt.Println("##Error:", err.Error())
@@ -146,7 +146,7 @@ func Logout(ctx *gin.Context) {
 	update := bson.D{
 		{"$set", bson.D{{"tokens", fTokens}}},
 	}
-	res := <-crud.UpdateDoc("users", filter, update, nil)
+	res := <-database.Api.UpdateDoc("users", filter, update, nil)
 	if res.Error != nil {
 		ctx.JSON(500, utils.GenerateResponse(nil, constants.LogoutFailed))
 		println("##Error:", res.Error.Error())

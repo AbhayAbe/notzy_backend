@@ -1,4 +1,4 @@
-package utils
+package statics
 
 type Result struct {
 	Error  error

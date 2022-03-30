@@ -43,6 +43,9 @@ func handleConnectionAndRoutes() {
 	aR.Use(middlewares.Auth())
 	{
 		aR.GET("/logout", controllers.Logout)
+		aR.GET("/notes", controllers.GetNotes)
+		aR.GET("/getNoteData", controllers.GetNoteData)
+
 		aR.POST("/addNote", controllers.AddNote)
 	}
 

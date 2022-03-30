@@ -7,9 +7,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/AbhayAbe/notzy_backend/database/mongo/constants"
 	"github.com/AbhayAbe/notzy_backend/models"
-	"github.com/AbhayAbe/notzy_backend/utils"
+	"github.com/AbhayAbe/notzy_backend/statics"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -37,7 +36,8 @@ func ConfigureMongodb() {
 
 	DB = Client.Database("notzy")
 
-	res := <-initIndices(models.User{})
+	res := <-initIndices(models.User{}, nil)
+	res = <-initIndices(models.NoteData{}, "noteData")
 	fmt.Println(res.Result)
 }
 
@@ -47,15 +47,28 @@ func DisconnectMongodb() {
 	}
 }
 
-func initIndices(model interface{}) <-chan utils.Result {
-	ch := make(chan utils.Result)
+func initIndices(model interface{}, name interface{}) <-chan statics.Result {
+	ch := make(chan statics.Result)
+
 	go func() {
+		var nameVal string = ""
 		defer close(ch)
+		switch v := name.(type) {
+		case string:
+			nameVal = v
+		}
+
 		mod := reflect.TypeOf(model)
-		schemaName := strings.ToLower(mod.Name()) + "s"
+		var schemaName string
+		if len(nameVal) <= 0 {
+			schemaName = strings.ToLower(mod.Name()) + "s"
+		} else {
+			schemaName = nameVal
+		}
+
 		for i := 0; i < mod.NumField(); i++ {
 			field := mod.Field(i)
-			tag := field.Tag.Get(constants.IsUnique)
+			tag := field.Tag.Get(Api.Constants.IsUnique)
 			key := field.Tag.Get("json")
 			if len(tag) > 0 && len(key) > 0 {
 				_, err := DB.Collection(schemaName).Indexes().CreateOne(context.Background(),
@@ -66,10 +79,10 @@ func initIndices(model interface{}) <-chan utils.Result {
 				if err != nil {
 					DisconnectMongodb()
 					fmt.Println("Error: ", err)
-					ch <- utils.Result{Error: err, Result: 0}
+					ch <- statics.Result{Error: err, Result: 0}
 				}
 				fmt.Println("Index for", schemaName, "created")
-				ch <- utils.Result{Error: nil, Result: 1}
+				ch <- statics.Result{Error: nil, Result: 1}
 			}
 		}
 	}()
