@@ -47,6 +47,12 @@ func handleConnectionAndRoutes() {
 		aR.GET("/getNoteData", controllers.GetNoteData)
 
 		aR.POST("/addNote", controllers.AddNote)
+		aR.PATCH("/updateNote", controllers.UpdateNote)
+
+		aR.PATCH("/saveNoteData", controllers.SaveNoteData)
+
+		aR.DELETE("/note", controllers.DeleteNote)
+		aR.DELETE("/user", controllers.DeleteUser)
 	}
 
 	if err := router.Run(_PORT_); err != nil {

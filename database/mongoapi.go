@@ -15,10 +15,11 @@ var constants mongoConstants = mongoConstants{
 
 type mongoApi struct {
 	Constants mongoConstants
-	InsertDoc func(string, interface{}) chan statics.Result
-	FindDoc   func(string, interface{}, interface{}, *options.FindOneOptions) chan error
-	FindDocs  func(string, interface{}, *options.FindOptions) chan statics.Result
-	UpdateDoc func(string, interface{}, interface{}, *options.UpdateOptions) chan statics.Result
+	InsertDoc func(collection string, doc interface{}) chan statics.Result
+	FindDoc   func(collection string, filter interface{}, decode interface{}, options *options.FindOneOptions) chan error
+	FindDocs  func(collection string, filter interface{}, options *options.FindOptions) chan statics.Result
+	UpdateDoc func(collection string, filter interface{}, update interface{}, options *options.UpdateOptions) chan statics.Result
+	DeleteDoc func(collection string, filter interface{}, options *options.DeleteOptions) chan statics.Result
 }
 
 var Api mongoApi = mongoApi{
@@ -27,4 +28,5 @@ var Api mongoApi = mongoApi{
 	FindDoc:   findDoc,
 	FindDocs:  findDocs,
 	UpdateDoc: updateDoc,
+	DeleteDoc: deleteDoc,
 }

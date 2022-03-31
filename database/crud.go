@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/AbhayAbe/notzy_backend/statics"
 	"github.com/gin-gonic/gin"
@@ -79,9 +80,34 @@ func updateDoc(collectionName string, filter interface{}, update interface{}, op
 		var res interface{}
 		var err error
 		if opts != nil {
+			fmt.Println("^^")
 			res, err = db.Collection(collectionName).UpdateOne(context.Background(), filter, update, opts)
 		} else {
+			fmt.Println("::", collectionName, ',', filter, ",", update)
 			res, err = db.Collection(collectionName).UpdateOne(context.Background(), filter, update)
+		}
+
+		if err != nil {
+			ch <- statics.Result{Error: err, Result: nil}
+		} else {
+			ch <- statics.Result{Error: nil, Result: res}
+		}
+	}()
+	return ch
+}
+
+//Delete
+func deleteDoc(collectionName string, filter interface{}, opts *options.DeleteOptions) chan statics.Result {
+	var db *mongo.Database = DB
+	ch := make(chan statics.Result)
+	go func() {
+		defer close(ch)
+		var res interface{}
+		var err error
+		if opts != nil {
+			res, err = db.Collection(collectionName).DeleteOne(context.Background(), filter, opts)
+		} else {
+			res, err = db.Collection(collectionName).DeleteOne(context.Background(), filter)
 		}
 
 		if err != nil {

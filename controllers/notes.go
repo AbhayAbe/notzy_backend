@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/AbhayAbe/notzy_backend/constants"
@@ -11,7 +10,9 @@ import (
 	"github.com/AbhayAbe/notzy_backend/utils"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func GetNotes(ctx *gin.Context) {
@@ -22,7 +23,8 @@ func GetNotes(ctx *gin.Context) {
 	}
 	fmt.Println("email:", email)
 	filter := bson.M{"email": email}
-	res := <-database.Api.FindDocs("notes", filter, nil)
+	opts := options.Find().SetProjection(bson.D{{"data", 0}})
+	res := <-database.Api.FindDocs("notes", filter, opts)
 	if res.Error != nil {
 		ctx.JSON(500, utils.GenerateResponse(nil, constants.GetNotesFailed))
 		fmt.Println("3Error:", res.Error.Error())
@@ -58,27 +60,8 @@ func GetNotes(ctx *gin.Context) {
 }
 
 func AddNote(ctx *gin.Context) {
-	type reqData struct {
-		Data  string `json="data"`
-		Title string `json="title"`
-		Email string `json="email"`
-	}
-	rD := &reqData{}
-	if err := ctx.BindJSON(rD); err != nil {
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.SaveNoteFailed))
-		fmt.Println(">>Error:", err.Error())
-		return
-	}
-	email, exists := ctx.Get("email")
-	if !exists {
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.SaveNoteFailed))
-		fmt.Println(">>Error:", errors.New("Email doesn't exist"))
-		return
-	}
-	rD.Email = fmt.Sprintf("%v", email)
-	mp := map[string]string{"data": rD.Data, "title": rD.Title, "email": rD.Email}
 	note := models.Note{}
-	n, err := models.Note.CreateNoteFromInterface(note, mp)
+	n, err := models.Note.CreateNote(note, ctx)
 	if err != nil {
 		ctx.JSON(500, utils.GenerateResponse(nil, constants.SaveNoteFailed))
 		fmt.Println("Error:", err.Error())
@@ -90,56 +73,115 @@ func AddNote(ctx *gin.Context) {
 		fmt.Println("Error:", err.Error())
 		return
 	}
-	var id string
-	switch v := res.Result.(type) {
-	case gin.H:
-		id = fmt.Sprintf("%v", v["_id"])
-	default:
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.GetNotesFailed))
-		fmt.Println("5Error:", res.Error.Error())
-		return
-	}
-	noteData := models.NoteData{}
-	mp = map[string]string{"data": rD.Data, "parent": id, "email": rD.Email}
-	nD, err := models.NoteData.CreateNoteDataViaMap(noteData, mp)
-	if err != nil {
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.SaveNoteFailed))
-		fmt.Println("Error:", err.Error())
-		return
-	}
-	ndRes := <-database.Api.InsertDoc("noteData", nD)
-	if ndRes.Error != nil {
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.SaveNoteFailed))
-		fmt.Println("Error:", err.Error())
-		return
-	}
 	ctx.JSON(200, utils.GenerateResponse(res.Result, constants.NoError))
 }
 
+func SaveNoteData(ctx *gin.Context) {
+	docId := ctx.Request.URL.Query().Get("id")
+	fmt.Println("_ID:", docId)
+
+	type noteData struct {
+		Data string `json:"data" binding:"required"`
+	}
+	data := &noteData{}
+	err := ctx.BindJSON(data)
+	if err != nil {
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.UpdateNotefailed))
+		println("!##Error:", err.Error())
+		return
+	}
+	id, err := primitive.ObjectIDFromHex(docId)
+	if err != nil {
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.UpdateNotefailed))
+		println("%%Error:", err.Error())
+		return
+	}
+
+	filter := bson.M{"_id": id}
+	update := bson.D{
+		{"$set", bson.D{{"data", data.Data}}},
+	}
+
+	res := <-database.Api.UpdateDoc("notes", filter, update, nil)
+	if res.Error != nil {
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.UpdateNotefailed))
+		println("%%Error:", err.Error())
+		return
+	}
+	ctx.JSON(200, utils.GenerateResponse(constants.UpdateSuccesful, constants.NoError))
+}
+
+func UpdateNote(ctx *gin.Context) {
+	docId := ctx.Request.URL.Query().Get("id")
+	fmt.Println("_ID:", docId)
+	note := models.Note{}
+	n, err := models.Note.CreateNote(note, ctx)
+	if err != nil {
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.UpdateNotefailed))
+		println("!##Error:", err.Error())
+		return
+	}
+	id, err := primitive.ObjectIDFromHex(docId)
+	if err != nil {
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.UpdateNotefailed))
+		println("%%Error:", err.Error())
+		return
+	}
+	filter := bson.M{"_id": id}
+	fmt.Println("Filter:", filter)
+	bM, err := bson.Marshal(n)
+	bD := &bson.D{}
+	if err != nil {
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.UpdateNotefailed))
+		println("!##Error:", err.Error())
+		return
+	}
+	err = bson.Unmarshal(bM, &bD)
+	update := bson.D{
+		{"$set", bD},
+	}
+	res := <-database.Api.UpdateDoc("notes", filter, update, nil)
+	if res.Error != nil {
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.UpdateNotefailed))
+		println("!##Error:", res.Error.Error())
+		return
+	}
+	ctx.JSON(200, utils.GenerateResponse(n, constants.NoError))
+}
+
 func GetNoteData(ctx *gin.Context) {
-	parent := ctx.Request.URL.Query().Get("parent")
-	// if !exists {
-	// 	ctx.JSON(500, utils.GenerateResponse(nil, constants.GetNotesFailed))
-	// 	fmt.Println(">>Error:", errors.New("No parent ID found"))
-	// 	return
-	// }
-	fmt.Println("Parent: ", parent)
-	filter := bson.D{{"parent", parent}}
-	noteData := &models.NoteData{}
-	err := <-database.Api.FindDoc("noteData", filter, noteData, nil)
+	docId := ctx.Request.URL.Query().Get("id")
+	id, err := primitive.ObjectIDFromHex(docId)
+	if err != nil {
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.GetNotesFailed))
+		println("%%Error:", err.Error())
+		return
+	}
+	filter := bson.D{{"_id", id}}
+	noteData := &models.Note{}
+	err = <-database.Api.FindDoc("notes", filter, noteData, nil)
 	if err != nil {
 		ctx.JSON(500, utils.GenerateResponse(nil, constants.GetNotesFailed))
 		fmt.Println(">>Error:", err.Error())
 		return
 	}
 	ctx.JSON(200, utils.GenerateResponse(noteData, constants.NoError))
-
 }
 
-func DeleteNotes(ctx *gin.Context) {
-
-}
-
-func RenameNote(ctx *gin.Context) {
-
+func DeleteNote(ctx *gin.Context) {
+	docId := ctx.Request.URL.Query().Get("id")
+	id, err := primitive.ObjectIDFromHex(docId)
+	if err != nil {
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.DeleteFailed))
+		println("%%Error:", err.Error())
+		return
+	}
+	noteFilter := bson.M{"_id": id}
+	res := <-database.Api.DeleteDoc("notes", noteFilter, nil)
+	if res.Error != nil {
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.DeleteFailed))
+		println("%%Error:", err.Error())
+		return
+	}
+	ctx.JSON(200, utils.GenerateResponse(constants.DeleteSuccesful, constants.NoError))
 }

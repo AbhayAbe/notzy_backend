@@ -37,7 +37,6 @@ func ConfigureMongodb() {
 	DB = Client.Database("notzy")
 
 	res := <-initIndices(models.User{}, nil)
-	res = <-initIndices(models.NoteData{}, "noteData")
 	fmt.Println(res.Result)
 }
 
