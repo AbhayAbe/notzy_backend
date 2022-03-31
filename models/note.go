@@ -13,7 +13,7 @@ type Note struct {
 	Id    interface{} `json:"_id,omitempty" bson:"_id,omitempty"`
 	Title string      `json:"title" binding:"required"`
 	Email string      `json:"email"`
-	Data  string      `json:"data" binding:"required`
+	Data  string      `json:"data" binding:"required"`
 }
 
 func (n Note) CreateNote(ctx *gin.Context) (*Note, error) {
