@@ -14,51 +14,61 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+func AuthenticateUser(ctx *gin.Context) {
+	email, exists := ctx.Get("email")
+	if !exists {
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.AuthenticationFailed, nil))
+		return
+	}
+	fmt.Println("email:", email)
+	ctx.JSON(200, utils.GenerateResponse(constants.Authenticationsuccesful, "", nil))
+	return
+}
 func Register(ctx *gin.Context) {
 	var user models.User
 	var token *string
 	u, err := models.User.CreateUser(user, ctx)
 	if err != nil {
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.RegistrationFailed))
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.RegistrationFailed, nil))
 		println("!##Error:", err.Error())
 		return
 	}
 	u, token, err = models.User.GenerateAuthToken(*u)
 	if err != nil {
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.RegistrationFailed))
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.RegistrationFailed, nil))
 		println("!##Error:", err.Error())
 		return
 	}
 	hash, err := utils.GenerateFromPassword(u.Password, statics.ArgonParams)
 	if err != nil {
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.RegistrationFailed))
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.RegistrationFailed, nil))
 		println("##Error:", err)
 		return
 	}
 	u.Password = hash
 	res := <-database.Api.InsertDoc("users", u)
 	if res.Error != nil {
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.RegistrationFailed))
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.RegistrationFailed, nil))
 		println("##Error:", err)
 		return
 	}
 	u.Password = ""
 	u.Tokens = make([]models.JwtToken, 0)
-	ctx.JSON(200, utils.GenerateResponse(gin.H{"user": u, "token": *token}, constants.NoError))
+	ctx.JSON(200, utils.GenerateResponse(gin.H{"user": u, "token": *token}, constants.NoError, nil))
 }
 
 func Login(ctx *gin.Context) {
 	data := make(map[string]string)
 	jsonData, err := ctx.GetRawData()
 	if err != nil {
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.LoginFailed))
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.LoginFailed, nil))
 		fmt.Println("Error:", err)
 		return
 	}
 
 	err = json.Unmarshal(jsonData, &data)
 	if err != nil {
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.LoginFailed))
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.LoginFailed, nil))
 		fmt.Println("Error:", err)
 		return
 	}
@@ -67,19 +77,19 @@ func Login(ctx *gin.Context) {
 	filter := bson.D{{"email", email}}
 	er := <-database.Api.FindDoc("users", filter, user, nil)
 	if er != nil {
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.LoginFailed))
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.LoginFailed, nil))
 		fmt.Println("Error:", err)
 		return
 	}
 
 	match, err := utils.ComparePasswordAndHash(data["password"], user.Password)
 	if err != nil {
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.LoginFailed))
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.LoginFailed, nil))
 		fmt.Println("Error:", err)
 		return
 	}
 	if !match {
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.LoginFailed))
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.LoginFailed, nil))
 		fmt.Println("Error:", err)
 		return
 	}
@@ -89,7 +99,7 @@ func Login(ctx *gin.Context) {
 	user, token, err = models.User.GenerateAuthToken(*user)
 
 	if err != nil {
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.RegistrationFailed))
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.RegistrationFailed, nil))
 		println("!##Error:", err.Error())
 		return
 	}
@@ -98,13 +108,13 @@ func Login(ctx *gin.Context) {
 	}
 	res := <-database.Api.UpdateDoc("users", filter, update, nil)
 	if res.Error != nil {
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.LoginFailed))
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.LoginFailed, nil))
 		println("##Error:", res.Error.Error())
 		return
 	}
 	user.Password = ""
 	user.Tokens = make([]models.JwtToken, 0)
-	ctx.JSON(200, utils.GenerateResponse(gin.H{"user": user, "token": *token}, constants.NoError))
+	ctx.JSON(200, utils.GenerateResponse(gin.H{"user": user, "token": *token}, constants.NoError, nil))
 	fmt.Println("Error:", err)
 	return
 }
@@ -112,7 +122,7 @@ func Login(ctx *gin.Context) {
 func Logout(ctx *gin.Context) {
 	email, exists := ctx.Get("email")
 	if !exists {
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.LogoutFailed))
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.LogoutFailed, nil))
 		return
 	}
 	fmt.Println("email:", email)
@@ -120,7 +130,7 @@ func Logout(ctx *gin.Context) {
 	filter := bson.D{{"email", email}}
 	err := <-database.Api.FindDoc("users", filter, user, nil)
 	if err != nil {
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.LogoutFailed))
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.LogoutFailed, nil))
 		fmt.Println("##Error:", err.Error())
 		return
 	}
@@ -138,7 +148,7 @@ func Logout(ctx *gin.Context) {
 		}
 	}
 	if !isRemoved {
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.LogoutFailed))
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.LogoutFailed, nil))
 		fmt.Println("Couldn't remove tokens")
 		return
 	}
@@ -148,13 +158,13 @@ func Logout(ctx *gin.Context) {
 	}
 	res := <-database.Api.UpdateDoc("users", filter, update, nil)
 	if res.Error != nil {
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.LogoutFailed))
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.LogoutFailed, nil))
 		println("##Error:", res.Error.Error())
 		return
 	}
 	user.Password = ""
 	user.Tokens = make([]models.JwtToken, 0)
-	ctx.JSON(200, utils.GenerateResponse(user, ""))
+	ctx.JSON(200, utils.GenerateResponse(user, "", nil))
 }
 
 func GoogleSignin(ctx *gin.Context) {

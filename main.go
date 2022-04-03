@@ -8,6 +8,7 @@ import (
 	"github.com/AbhayAbe/notzy_backend/controllers"
 	"github.com/AbhayAbe/notzy_backend/database"
 	"github.com/AbhayAbe/notzy_backend/middlewares"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -31,6 +32,13 @@ func configEnv() {
 
 func handleConnectionAndRoutes() {
 	router := gin.Default()
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{os.Getenv("CorsWebsiteURL")},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
+		AllowHeaders:     []string{"Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With"},
+		AllowCredentials: true,
+	}))
+
 	aR := router.Group("/")
 
 	//unauthenticated routes
@@ -42,6 +50,8 @@ func handleConnectionAndRoutes() {
 	//authenticatedRoutes
 	aR.Use(middlewares.Auth())
 	{
+		aR.GET("/authenticate", controllers.AuthenticateUser)
+		aR.GET("/getUser", controllers.GetUser)
 		aR.GET("/logout", controllers.Logout)
 		aR.GET("/notes", controllers.GetNotes)
 		aR.GET("/getNoteData", controllers.GetNoteData)

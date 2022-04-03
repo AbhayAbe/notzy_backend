@@ -7,26 +7,30 @@ import (
 
 type mongoConstants struct {
 	IsUnique string
+	Sort     string
 }
 
 var constants mongoConstants = mongoConstants{
 	IsUnique: "isUnique",
+	Sort:     "sort",
 }
 
 type mongoApi struct {
-	Constants mongoConstants
-	InsertDoc func(collection string, doc interface{}) chan statics.Result
-	FindDoc   func(collection string, filter interface{}, decode interface{}, options *options.FindOneOptions) chan error
-	FindDocs  func(collection string, filter interface{}, options *options.FindOptions) chan statics.Result
-	UpdateDoc func(collection string, filter interface{}, update interface{}, options *options.UpdateOptions) chan statics.Result
-	DeleteDoc func(collection string, filter interface{}, options *options.DeleteOptions) chan statics.Result
+	Constants  mongoConstants
+	InsertDoc  func(collection string, doc interface{}) chan statics.Result
+	FindDoc    func(collection string, filter interface{}, decode interface{}, options *options.FindOneOptions) chan error
+	FindDocs   func(collection string, filter interface{}, options *options.FindOptions) chan statics.Result
+	UpdateDoc  func(collection string, filter interface{}, update interface{}, options *options.UpdateOptions) chan statics.Result
+	DeleteDoc  func(collection string, filter interface{}, options *options.DeleteOptions) chan statics.Result
+	DeleteDocs func(collection string, filter interface{}, options *options.DeleteOptions) chan statics.Result
 }
 
 var Api mongoApi = mongoApi{
-	Constants: constants,
-	InsertDoc: insertDoc,
-	FindDoc:   findDoc,
-	FindDocs:  findDocs,
-	UpdateDoc: updateDoc,
-	DeleteDoc: deleteDoc,
+	Constants:  constants,
+	InsertDoc:  insertDoc,
+	FindDoc:    findDoc,
+	FindDocs:   findDocs,
+	UpdateDoc:  updateDoc,
+	DeleteDoc:  deleteDoc,
+	DeleteDocs: deleteDocs,
 }

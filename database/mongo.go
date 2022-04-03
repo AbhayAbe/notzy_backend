@@ -36,7 +36,8 @@ func ConfigureMongodb() {
 
 	DB = Client.Database("notzy")
 
-	res := <-initIndices(models.User{}, nil)
+	res := <-initUniqueIndices(models.User{}, nil)
+	res = <-initSortIndices(models.Note{}, -1, nil)
 	fmt.Println(res.Result)
 }
 
@@ -46,7 +47,7 @@ func DisconnectMongodb() {
 	}
 }
 
-func initIndices(model interface{}, name interface{}) <-chan statics.Result {
+func initUniqueIndices(model interface{}, name interface{}) <-chan statics.Result {
 	ch := make(chan statics.Result)
 
 	go func() {
@@ -74,6 +75,47 @@ func initIndices(model interface{}, name interface{}) <-chan statics.Result {
 					mongo.IndexModel{
 						Keys:    bson.M{key: 1},
 						Options: options.Index().SetUnique(true),
+					})
+				if err != nil {
+					DisconnectMongodb()
+					fmt.Println("Error: ", err)
+					ch <- statics.Result{Error: err, Result: 0}
+				}
+				fmt.Println("Index for", schemaName, "created")
+				ch <- statics.Result{Error: nil, Result: 1}
+			}
+		}
+	}()
+	return ch
+}
+
+func initSortIndices(model interface{}, sortOrder int64, name interface{}) <-chan statics.Result {
+	ch := make(chan statics.Result)
+
+	go func() {
+		var nameVal string = ""
+		defer close(ch)
+		switch v := name.(type) {
+		case string:
+			nameVal = v
+		}
+
+		mod := reflect.TypeOf(model)
+		var schemaName string
+		if len(nameVal) <= 0 {
+			schemaName = strings.ToLower(mod.Name()) + "s"
+		} else {
+			schemaName = nameVal
+		}
+
+		for i := 0; i < mod.NumField(); i++ {
+			field := mod.Field(i)
+			tag := field.Tag.Get(Api.Constants.Sort)
+			key := field.Tag.Get("json")
+			if len(tag) > 0 && len(key) > 0 {
+				_, err := DB.Collection(schemaName).Indexes().CreateOne(context.Background(),
+					mongo.IndexModel{
+						Keys: bson.M{key: sortOrder},
 					})
 				if err != nil {
 					DisconnectMongodb()

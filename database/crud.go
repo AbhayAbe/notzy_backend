@@ -118,3 +118,24 @@ func deleteDoc(collectionName string, filter interface{}, opts *options.DeleteOp
 	}()
 	return ch
 }
+func deleteDocs(collectionName string, filter interface{}, opts *options.DeleteOptions) chan statics.Result {
+	var db *mongo.Database = DB
+	ch := make(chan statics.Result)
+	go func() {
+		defer close(ch)
+		var res interface{}
+		var err error
+		if opts != nil {
+			res, err = db.Collection(collectionName).DeleteMany(context.Background(), filter, opts)
+		} else {
+			res, err = db.Collection(collectionName).DeleteMany(context.Background(), filter)
+		}
+
+		if err != nil {
+			ch <- statics.Result{Error: err, Result: nil}
+		} else {
+			ch <- statics.Result{Error: nil, Result: res}
+		}
+	}()
+	return ch
+}
