@@ -83,7 +83,7 @@ func GetNotes(ctx *gin.Context) {
 		}
 		fmt.Println("Currpage:", i, ",limit:", pageLimit)
 		if i > 1 && pageLimit > 0 {
-			opts.SetSkip(i + pageLimit)
+			opts.SetSkip(pageLimit * (i - 1))
 		}
 	}
 	res := <-database.Api.FindDocs("notes", filter, opts)
@@ -117,8 +117,13 @@ func GetNotes(ctx *gin.Context) {
 		fmt.Println("6Error:", res.Error.Error())
 		return
 	}
-	docCount, err := database.DB.Collection("notes").CountDocuments(context.Background(), bson.M{})
+	docCount, err := database.DB.Collection("notes").CountDocuments(context.Background(), bson.M{"email": email})
 	if err != nil {
+		ctx.JSON(500, utils.GenerateResponse(nil, constants.NoNotes, nil))
+		fmt.Println("6Error:", res.Error.Error())
+		return
+	}
+	if docCount == 0 {
 		ctx.JSON(500, utils.GenerateResponse(nil, constants.NoNotes, nil))
 		fmt.Println("6Error:", res.Error.Error())
 		return
@@ -184,8 +189,7 @@ func UpdateNote(ctx *gin.Context) {
 	docId := ctx.Request.URL.Query().Get("id")
 	fmt.Println("_ID:", docId)
 	type noteStruct struct {
-		Title     string              `json:"title" binding:"required"`
-		UpdatedAt primitive.Timestamp `json:"updatedAt"`
+		Title string `json:"title" binding:"required"`
 	}
 	note := &noteStruct{}
 
@@ -203,18 +207,20 @@ func UpdateNote(ctx *gin.Context) {
 	}
 	filter := bson.M{"_id": id}
 	fmt.Println("Filter:", filter)
-	note.UpdatedAt = primitive.Timestamp{T: uint32(time.Now().Unix())}
-	bM, err := bson.Marshal(note)
-	bD := &bson.D{}
-	if err != nil {
-		ctx.JSON(500, utils.GenerateResponse(nil, constants.UpdateNotefailed, nil))
-		println("!##Error:", err.Error())
-		return
-	}
-	err = bson.Unmarshal(bM, &bD)
-	update := bson.M{
-		"$set": bD,
-	}
+	// note.UpdatedAt = primitive.Timestamp{T: uint32(time.Now().Unix())}
+	// bM, err := bson.Marshal(note)
+	// bD := &bson.D{}
+	// if err != nil {
+	// 	ctx.JSON(500, utils.GenerateResponse(nil, constants.UpdateNotefailed, nil))
+	// 	println("!##Error:", err.Error())
+	// 	return
+	// }
+	// err = bson.Unmarshal(bM, &bD)
+	// fmt.Println("BsonData:L: ", bD)
+	// update := bson.M{
+	// 	"$set": bD,
+	// }
+	update := bson.M{"$set": bson.M{"title": note.Title, "updatedAt": primitive.Timestamp{T: uint32(time.Now().Unix())}}}
 	res := <-database.Api.UpdateDoc("notes", filter, update, nil)
 	if res.Error != nil {
 		ctx.JSON(500, utils.GenerateResponse(nil, constants.UpdateNotefailed, nil))
